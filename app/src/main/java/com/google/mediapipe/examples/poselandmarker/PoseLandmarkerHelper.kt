@@ -29,25 +29,20 @@ class PoseLandmarkerHelper(
     // Этот слушатель используется только при выполнении в RunningMode.LIVE_STREAM
     val poseLandmarkerHelperListener: LandmarkerListener? = null
 ) {
-
     // Для этого примера это должно быть var, чтобы его можно было сбросить при изменениях.
     // Если Pose Landmarker не будет изменяться, лучше использовать ленивое val.
     private var poseLandmarker: PoseLandmarker? = null
-
     init {
         setupPoseLandmarker()
     }
-
     fun clearPoseLandmarker() {
         poseLandmarker?.close()
         poseLandmarker = null
     }
-
     // Возвращает состояние выполнения PoseLandmarkerHelper
     fun isClose(): Boolean {
         return poseLandmarker == null
     }
-
     // Инициализирует Pose Landmarker с использованием текущих настроек на
     // потоке, который его использует. CPU может использоваться с Landmarker,
     // которые созданы в основном потоке и используются в фоновом потоке, но
@@ -66,7 +61,6 @@ class PoseLandmarkerHelper(
                 baseOptionBuilder.setDelegate(Delegate.GPU)
             }
         }
-
         val modelName =
             when (currentModel) {
                 MODEL_POSE_LANDMARKER_FULL -> "pose_landmarker_full.task"
@@ -74,9 +68,7 @@ class PoseLandmarkerHelper(
                 MODEL_POSE_LANDMARKER_HEAVY -> "pose_landmarker_heavy.task"
                 else -> "pose_landmarker_full.task"
             }
-
         baseOptionBuilder.setModelAssetPath(modelName)
-
         // Проверка согласованности runningMode с poseLandmarkerHelperListener
         when (runningMode) {
             RunningMode.LIVE_STREAM -> {
@@ -90,7 +82,6 @@ class PoseLandmarkerHelper(
                 // Нет операции
             }
         }
-
         try {
             val baseOptions = baseOptionBuilder.build()
             // Создание построителя параметров с базовыми параметрами и специфическими
@@ -102,14 +93,12 @@ class PoseLandmarkerHelper(
                     .setMinTrackingConfidence(minPoseTrackingConfidence)
                     .setMinPosePresenceConfidence(minPosePresenceConfidence)
                     .setRunningMode(runningMode)
-
             // Слушатель результатов и ошибок используется только для режима LIVE_STREAM.
             if (runningMode == RunningMode.LIVE_STREAM) {
                 optionsBuilder
                     .setResultListener(this::returnLivestreamResult)
                     .setErrorListener(this::returnLivestreamError)
             }
-
             val options = optionsBuilder.build()
             poseLandmarker =
                 PoseLandmarker.createFromOptions(context, options)
@@ -132,7 +121,6 @@ class PoseLandmarkerHelper(
             )
         }
     }
-
     // Преобразует ImageProxy в MP Image и передает его в PoselandmakerHelper.
     fun detectLiveStream(
         imageProxy: ImageProxy,
@@ -175,13 +163,11 @@ class PoseLandmarkerHelper(
             bitmapBuffer, 0, 0, bitmapBuffer.width, bitmapBuffer.height,
             matrix, true
         )
-
         // Преобразование входного объекта Bitmap в объект MPImage для выполнения вывода
         val mpImage = BitmapImageBuilder(rotatedBitmap).build()
 
         detectAsync(mpImage, frameTime)
     }
-
     // Выполнить определение позы с использованием API Pose Landmarker MediaPipe
     @VisibleForTesting
     fun detectAsync(mpImage: MPImage, frameTime: Long) {
@@ -189,7 +175,6 @@ class PoseLandmarkerHelper(
         // Поскольку мы используем режим LIVE_STREAM, результаты маркировки
         // будут возвращены в функцию returnLivestreamResult
     }
-
     // Принимает URI для видеофайла, загруженного из галереи пользователя, и пытается выполнить
     // вывод маркировки позы на видео. В этом процессе будут оценены все
     // кадры в видео, и результаты будут прикреплены к пакету, который будет
@@ -204,38 +189,30 @@ class PoseLandmarkerHelper(
                         " при использовании не RunningMode.VIDEO"
             )
         }
-
         // Время вывода - разница между системным временем в начале и конце
         // процесса
         val startTime = SystemClock.uptimeMillis()
-
         var didErrorOccurred = false
-
         // Загрузка кадров из видео и выполнение маркировки позы.
         val retriever = MediaMetadataRetriever()
         retriever.setDataSource(context, videoUri)
         val videoLengthMs =
             retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                 ?.toLong()
-
         // Примечание: необходимо читать ширину/высоту из кадра, а не получать ширину/высоту
         // видео напрямую, потому что MediaRetriever возвращает кадры, которые меньше
         // фактического размера файла видео.
         val firstFrame = retriever.getFrameAtTime(0)
         val width = firstFrame?.width
         val height = firstFrame?.height
-
         // Если видео недопустимо, возвращается пустой результат обнаружения
         if ((videoLengthMs == null) || (width == null) || (height == null)) return null
-
         // Затем мы будем получать один кадр каждые inferenceIntervalMs мс,
         // а затем выполнять детекцию на этих кадрах.
         val resultList = mutableListOf<PoseLandmarkerResult>()
         val numberOfFrameToRead = videoLengthMs.div(inferenceIntervalMs)
-
         for (i in 0..numberOfFrameToRead) {
             val timestampMs = i * inferenceIntervalMs // мс
-
             retriever
                 .getFrameAtTime(
                     timestampMs * 1000, // преобразование из мс в микрос
@@ -270,19 +247,15 @@ class PoseLandmarkerHelper(
                     )
                 }
         }
-
         retriever.release()
-
         val inferenceTimePerFrameMs =
             (SystemClock.uptimeMillis() - startTime).div(numberOfFrameToRead)
-
         return if (didErrorOccurred) {
             null
         } else {
             ResultBundle(resultList, inferenceTimePerFrameMs, height, width)
         }
     }
-
     // Принимает Bitmap и выполняет вывод маркировки позы на нем, чтобы вернуть
     // результаты вызывающей стороне
     fun detectImage(image: Bitmap): ResultBundle? {
@@ -292,15 +265,11 @@ class PoseLandmarkerHelper(
                         " при использовании не RunningMode.IMAGE"
             )
         }
-
-
         // Время вывода - разница между системным временем в
         // начале и конце процесса
         val startTime = SystemClock.uptimeMillis()
-
         // Преобразование входного объекта Bitmap в объект MPImage для выполнения вывода
         val mpImage = BitmapImageBuilder(image).build()
-
         // Выполнение маркировки позы с использованием API Pose Landmarker MediaPipe
         poseLandmarker?.detect(mpImage)?.also { landmarkResult ->
             val inferenceTimeMs = SystemClock.uptimeMillis() - startTime
@@ -311,7 +280,6 @@ class PoseLandmarkerHelper(
                 image.width
             )
         }
-
         // Если poseLandmarker?.detect() возвращает null, это вероятно ошибка. Возврат null
         // для указания этого.
         poseLandmarkerHelperListener?.onError(
@@ -319,7 +287,6 @@ class PoseLandmarkerHelper(
         )
         return null
     }
-
     // Возвращает результаты маркировки вызывающей стороне этого PoseLandmarkerHelper
     private fun returnLivestreamResult(
         result: PoseLandmarkerResult,
@@ -327,7 +294,6 @@ class PoseLandmarkerHelper(
     ) {
         val finishTimeMs = SystemClock.uptimeMillis()
         val inferenceTime = finishTimeMs - result.timestampMs()
-
         poseLandmarkerHelperListener?.onResults(
             ResultBundle(
                 listOf(result),
@@ -337,17 +303,14 @@ class PoseLandmarkerHelper(
             )
         )
     }
-
     // Возвращает ошибки, возникшие во время обнаружения, вызывающей стороне этого PoseLandmarkerHelper
     private fun returnLivestreamError(error: RuntimeException) {
         poseLandmarkerHelperListener?.onError(
             error.message ?: "Произошла неизвестная ошибка"
         )
     }
-
     companion object {
         const val TAG = "PoseLandmarkerHelper"
-
         const val DELEGATE_CPU = 0
         const val DELEGATE_GPU = 1
         const val DEFAULT_POSE_DETECTION_CONFIDENCE = 0.5F
@@ -360,16 +323,15 @@ class PoseLandmarkerHelper(
         const val MODEL_POSE_LANDMARKER_LITE = 1
         const val MODEL_POSE_LANDMARKER_HEAVY = 2
     }
-
     data class ResultBundle(
         val results: List<PoseLandmarkerResult>,
         val inferenceTime: Long,
         val inputImageHeight: Int,
         val inputImageWidth: Int,
     )
-
     interface LandmarkerListener {
         fun onError(error: String, errorCode: Int = OTHER_ERROR)
         fun onResults(resultBundle: ResultBundle)
     }
+    
 }

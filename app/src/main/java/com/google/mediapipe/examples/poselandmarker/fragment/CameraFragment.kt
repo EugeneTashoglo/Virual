@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.camera.core.Preview
 import androidx.camera.core.CameraSelector
@@ -52,6 +53,9 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
     /** Блокирующие операции машинного обучения выполняются с использованием этого исполнителя */
     private lateinit var backgroundExecutor: ExecutorService
+
+    // Метод для загрузки и отображения 3D-модели одежды-------------------------------------------------------------------------------
+
 
     override fun onResume() {
         super.onResume()
@@ -105,7 +109,18 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
         _fragmentCameraBinding =
             FragmentCameraBinding.inflate(inflater, container, false)
 
+        // Загрузка и отображение 3D-модели одежды
+
         return fragmentCameraBinding.root
+    }
+    private fun switchCamera() {
+        cameraFacing = if (cameraFacing == CameraSelector.LENS_FACING_BACK) {
+            CameraSelector.LENS_FACING_FRONT
+        } else {
+            CameraSelector.LENS_FACING_BACK
+        }
+        // Перепривязать использования камеры с новым направлением
+        bindCameraUseCases()
     }
 
     @SuppressLint("MissingPermission")
@@ -114,6 +129,9 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
         // Инициализируем наш фоновый исполнитель.
         backgroundExecutor = Executors.newSingleThreadExecutor()
+        view.findViewById<ImageButton>(R.id.switch_camera_button).setOnClickListener {
+            switchCamera()
+        }
 
         // Ожидаем, пока представления будут правильно размещены.
         fragmentCameraBinding.viewFinder.post {
@@ -131,6 +149,7 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
                 minPosePresenceConfidence = viewModel.currentMinPosePresenceConfidence,
                 currentDelegate = viewModel.currentDelegate,
                 poseLandmarkerHelperListener = this
+
             )
         }
 
@@ -306,6 +325,17 @@ class CameraFragment : Fragment(), PoseLandmarkerHelper.LandmarkerListener {
 
         val cameraSelector =
             CameraSelector.Builder().requireLensFacing(cameraFacing).build()
+        try {
+            cameraProvider?.unbindAll()
+
+            camera = cameraProvider?.bindToLifecycle(
+                this, cameraSelector, preview, imageAnalyzer
+            )
+            preview?.setSurfaceProvider(fragmentCameraBinding.viewFinder.surfaceProvider)
+
+        } catch(exc: Exception) {
+            Log.e(TAG, "Use case binding failed", exc)
+        }
 
         // Предварительный просмотр. Используется только соотношение сторон 4:3, потому что это наиболее близко к нашим моделям.
         preview = Preview.Builder().setTargetAspectRatio(AspectRatio.RATIO_4_3)
